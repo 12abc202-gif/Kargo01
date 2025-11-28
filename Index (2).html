@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚚 Система Управления Рейсами</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        
+        /* Вход */
+        .login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .login-box { background: white; border-radius: 20px; padding: 40px; max-width: 400px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .login-title { text-align: center; font-size: 2em; color: #2c3e50; margin-bottom: 30px; }
+        .login-icon { text-align: center; font-size: 4em; margin-bottom: 20px; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        .input-group input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1em; }
+        .input-group input:focus { outline: none; border-color: #667eea; }
+        .btn-login { width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: 600; cursor: pointer; }
+        .btn-login:hover { background: #5568d3; }
+        .error-msg { color: #e74c3c; text-align: center; margin-top: 15px; font-weight: 600; }
+        
+        /* Основной интерфейс */
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: white; border-radius: 20px; padding: 20px 30px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .header-left h1 { color: #2c3e50; font-size: 1.8em; margin-bottom: 5px; }
+        .header-left p { color: #7f8c8d; }
+        .header-right { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .user-email { font-weight: 600; color: #2c3e50; }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.95em; }
+        .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+        .btn-logout { background: #e74c3c; color: white; }
+        .btn-admin { background: #f39c12; color: white; }
+        .btn-download { background: #27ae60; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        
+        /* Регистрация */
+        .auth-toggle { text-align: center; margin-top: 15px; font-size: 0.9em; }
+        .auth-toggle a { color: #667eea; font-weight: 600; cursor: pointer; text-decoration: underline; }
+        
+        /* Вкладки как YouTube */
+        .tabs { background: white; border-radius: 15px; padding: 15px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: flex; gap: 10px; }
+        .tab { padding: 12px 30px; border: none; border-radius: 10px; font-weight: 700; font-size: 1em; cursor: pointer; background: #f0f0f0; color: #666; transition: all 0.3s; }
+        .tab.active { background: #667eea; color: white; }
+        .tab:hover:not(.active) { background: #e0e0e0; }
+        
+        /* Загрузка */
+        .upload-section { background: white; border-radius: 20px; padding: 30px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; }
+        .upload-area { border: 3px dashed #667eea; border-radius: 15px; padding: 40px; cursor: pointer; transition: all 0.3s ease; background: #f8f9fa; }
+        .upload-area:hover { background: #e9ecef; border-color: #764ba2; }
+        .upload-icon { font-size: 4em; margin-bottom: 15px; }
+        
+        /* Карточки рейсов */
+        .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .order-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); cursor: pointer; transition: all 0.3s ease; }
+        .order-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.25); }
+        .order-icon { font-size: 3em; text-align: center; margin-bottom: 10px; }
+        .order-title { font-size: 1.1em; font-weight: 700; color: #2c3e50; margin-bottom: 8px; text-align: center; }
+        .order-info { color: #7f8c8d; font-size: 0.9em; text-align: center; margin-bottom: 5px; }
+        
+        /* База данных - таблица */
+        .database-section { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow-x: auto; }
+        .database-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        .database-table th { background: #4a4a4a; color: white; padding: 12px; text-align: center; font-weight: 700; border: 1px solid #000; }
+        .database-table td { padding: 10px; border: 1px solid #000; font-weight: 600; font-size: 13px; position: relative; }
+        .database-table tbody tr:hover { background: #f0f0f0; }
+        .editable-cell { cursor: pointer; transition: all 0.2s; }
+        .editable-cell:hover { background: #fff3cd !important; }
+        .cell-input { width: 100%; border: 2px solid #667eea; padding: 8px; font-size: 13px; font-weight: 600; }
+        .cell-input:focus { outline: none; border-color: #764ba2; }
+        
+        /* Статус */
+        .status-cell { text-align: center; cursor: pointer; font-weight: bold; }
+        .status-unpaid { background: #f8d7da; color: #721c24; }
+        .status-paid { background: #d4edda; color: #155724; }
+        
+        /* Фильтры */
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .filter-btn { padding: 10px 20px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .filter-btn.active { background: #667eea; color: white; }
+        .filter-btn:not(.active) { background: #f0f0f0; color: #666; }
+        .filter-btn:hover:not(.active) { background: #e0e0e0; }
+        
+        /* Админ панель */
+        .admin-section { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .admin-title { font-size: 2em; font-weight: 700; text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .system-status { text-align: center; font-size: 1.5em; font-weight: 700; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .system-status.enabled { background: #d4edda; color: #155724; }
+        .system-status.disabled { background: #f8d7da; color: #721c24; }
+        .admin-controls { display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+        .users-list { display: flex; flex-direction: column; gap: 15px; }
+        .user-item { background: #f8f9fa; padding: 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .user-item-info { flex: 1; min-width: 200px; }
+        
+        /* Модалка */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 15px; padding: 30px; max-width: 98%; width: 100%; max-height: 95vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+        .modal-close { position: fixed; top: 30px; right: 30px; font-size: 3em; cursor: pointer; color: white; background: #e74c3c; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 1001; }
+        .modal-close:hover { transform: rotate(90deg) scale(1.1); }
+        .modal-title { font-size: 1.8em; font-weight: 700; color: #2c3e50; margin-bottom: 20px; text-align: center; }
+        
+        .hidden { display: none !important; }
+        
+        @media print {
+            .header-right, .tabs, .upload-section, .filters, .btn, .modal-close { display: none !important; }
+            .order-card { break-inside: avoid; }
+            .database-table { font-size: 10px; }
+            body { background: white; }
+            .container { padding: 10px; }
+        }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            .tabs { flex-direction: column; }
+            .orders-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Страница входа -->
+    <div id="loginPage" class="login-page">
+        <div class="login-box">
+            <div class="login-icon">🔐</div>
+            <div class="login-title">Вход в систему</div>
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" id="loginEmail" placeholder="example@gmail.com">
+            </div>
+            <div class="input-group">
+                <label>Пароль</label>
+                <input type="password" id="loginPassword" placeholder="Введите пароль">
+            </div>
+            <button class="btn-login" onclick="login()">Войти</button>
+            <div class="auth-toggle">
+                <span id="authToggleText">Нет аккаунта? <a onclick="toggleAuthMode()">Регистрация</a></span>
+            </div>
+            <div id="loginError" class="error-msg"></div>
+        </div>
+    </div>
+
+    <!-- Основной интерфейс -->
+    <div id="mainPage" class="hidden">
+        <div class="container">
+            <!-- Шапка -->
+            <div class="header">
+                <div class="header-left">
+                    <h1>🚚 Система Управления Рейсами</h1>
+                    <p>Загрузите Excel файлы - каждый файл = один рейс</p>
+                </div>
+                <div class="header-right">
+                    <div class="user-email" id="userEmail"></div>
+                    <button class="btn btn-admin hidden" id="btnAdmin" onclick="showAdminPanel()">⚙️ Админ</button>
+                    <button class="btn btn-logout" onclick="logout()">Выход</button>
+                </div>
+            </div>
+
+            <!-- Вкладки -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('main')">🏠 Главная</button>
+                <button class="tab" onclick="switchTab('database')">📊 База данных</button>
+            </div>
+
+            <!-- Вкладка: Главная -->
+            <div id="mainTab">
+                <!-- Загрузка -->
+                <div class="upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <div style="font-size: 1.3em; font-weight: 600; color: #2c3e50;">Нажмите или перетащите файлы</div>
+                        <div style="color: #7f8c8d; margin-top: 10px;">Можно выбрать несколько файлов сразу</div>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" multiple style="display: none;">
+                    </div>
+                </div>
+
+                <!-- Фильтры и печать на главной -->
+                <div class="filters">
+                    <button class="filter-btn active" onclick="setMainFilter('all')">📋 Все рейсы</button>
+                    <button class="filter-btn" onclick="setMainFilter('paid')">✅ Оплаченные</button>
+                    <button class="filter-btn" onclick="setMainFilter('unpaid')">❌ Неоплаченные</button>
+                    <button class="btn btn-download" onclick="printMain()" style="margin-left: auto;">🖨️ Печать</button>
+                </div>
+
+                <!-- Карточки рейсов -->
+                <div class="orders-grid" id="ordersGrid"></div>
+            </div>
+
+            <!-- Вкладка: База данных -->
+            <div id="databaseTab" class="hidden">
+                <!-- Фильтры -->
+                <div class="filters">
+                    <button class="filter-btn active" onclick="setFilter('all')">📋 Все</button>
+                    <button class="filter-btn" onclick="setFilter('paid')">✅ Оплачено</button>
+                    <button class="filter-btn" onclick="setFilter('unpaid')">❌ Не оплачено</button>
+                    <button class="btn btn-download" onclick="printDatabase()" style="margin-left: auto;">🖨️ Печать</button>
+                </div>
+                
+                <div class="database-section">
+                    <h2 style="margin-bottom: 20px; text-align: center; color: #2c3e50;">📊 Все рейсы в одной таблице</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="database-table" id="databaseTable">
+                            <thead id="databaseTableHead"></thead>
+                            <tbody id="databaseTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Админ панель -->
+            <div id="adminPanel" class="hidden">
+                <div class="admin-section">
+                    <div class="admin-title">⚙️ Админ Панель</div>
+                    
+                    <!-- Статус системы -->
+                    <div id="systemStatus" class="system-status enabled">
+                        🟢 Система включена
+                    </div>
+                    
+                    <div class="admin-controls">
+                        <button class="btn btn-danger" id="btnToggleSystem" onclick="toggleSystem()">🔴 Отключить систему</button>
+                        <button class="btn btn-success" onclick="hideAdminPanel()">Закрыть панель</button>
+                    </div>
+                    
+                    <h3 style="margin: 20px 0;">👥 Пользователи системы:</h3>
+                    <div class="users-list" id="adminUsersList"></div>
+                    
+                    <h3 style="margin: 20px 0;">📦 Все рейсы пользователей:</h3>
+                    <div id="adminOrdersList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка просмотра рейса -->
+    <div class="modal" id="modal">
+        <span class="modal-close" id="modalClose">×</span>
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">Рейс</div>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button class="btn btn-download" onclick="downloadCurrentOrder()">💾 Скачать неоплаченные в Excel</button>
+            </div>
+            <div id="tableWrapper"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let orders = [];
+        let currentOrder = null;
+        let currentTab = 'main';
+        let authMode = 'login';
+        let currentFilter = 'all';
+        let mainFilter = 'all';
+        let systemEnabled = true;
+
+        const ADMIN_EMAIL = '12abc202@gmail.com';
+        const ADMIN_PASSWORD = 'Abu_1610';
+
+        // Инициализация
+        function init() {
+            const savedSystemStatus = localStorage.getItem('systemEnabled');
+            systemEnabled = savedSystemStatus === null ? true : savedSystemStatus === 'true';
+            checkAuth();
+        }
+
+        function checkAuth() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showMainPage();
+            } else {
+                showLoginPage();
+            }
+        }
+
+        function showLoginPage() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('mainPage').classList.add('hidden');
+        }
+
+        function showMainPage() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainPage').classList.remove('hidden');
+            document.getElementById('userEmail').textContent = currentUser.email;
+
+            if (!systemEnabled && currentUser.email !== ADMIN_EMAIL) {
+                alert('⛔ Система временно отключена администратором');
+                logout();
+                return;
+            }
+
+            if (currentUser.email === ADMIN_EMAIL) {
+                document.getElementById('btnAdmin').classList.remove('hidden');
+            }
+
+            loadUserOrders();
+        }
+
+        function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorMsg = document.getElementById('loginError');
+
+            if (!email || !password) {
+                errorMsg.textContent = 'Заполните все поля';
+                return;
+            }
+
+            if (authMode === 'register') {
+                const users = JSON.parse(localStorage.getItem('users') || '{}');
+                if (users[email]) {
+                    errorMsg.textContent = 'Пользователь уже существует';
+                    return;
+                }
+                users[email] = { password, createdAt: new Date().toISOString() };
+                localStorage.setItem('users', JSON.stringify(users));
+                currentUser = { email, isAdmin: false };
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showMainPage();
+            } else {
+                if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+                    currentUser = { email, isAdmin: true };
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showMainPage();
+                } else {
+                    const users = JSON.parse(localStorage.getItem('users') || '{}');
+                    if (users[email]) {
+                        if (users[email].password === password) {
+                            currentUser = { email, isAdmin: false };
+                            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                            showMainPage();
+                        } else {
+                            errorMsg.textContent = 'Неверный пароль';
+                        }
+                    } else {
+                        errorMsg.textContent = 'Пользователь не найден';
+                    }
+                }
+            }
+        }
+
+        function toggleAuthMode() {
+            authMode = authMode === 'login' ? 'register' : 'login';
+            const title = document.querySelector('.login-title');
+            const btn = document.querySelector('.btn-login');
+            const toggleText = document.getElementById('authToggleText');
+            const errorMsg = document.getElementById('loginError');
+            
+            errorMsg.textContent = '';
+            
+            if (authMode === 'register') {
+                title.textContent = 'Регистрация';
+                btn.textContent = 'Зарегистрироваться';
+                toggleText.innerHTML = 'Есть аккаунт? <a onclick="toggleAuthMode()">Войти</a>';
+            } else {
+                title.textContent = 'Вход в систему';
+                btn.textContent = 'Войти';
+                toggleText.innerHTML = 'Нет аккаунта? <a onclick="toggleAuthMode()">Регистрация</a>';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            orders = [];
+            showLoginPage();
+        }
+
+        function loadUserOrders() {
+            const savedOrders = localStorage.getItem(`orders_${currentUser.email}`);
+            if (savedOrders) {
+                orders = JSON.parse(savedOrders);
+            } else {
+                orders = [];
+            }
+            renderAll();
+        }
+
+        function saveUserOrders() {
+            localStorage.setItem(`orders_${currentUser.email}`, JSON.stringify(orders));
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'main') {
+                document.getElementById('mainTab').classList.remove('hidden');
+                document.getElementById('databaseTab').classList.add('hidden');
+            } else {
+                document.getElementById('mainTab').classList.add('hidden');
+                document.getElementById('databaseTab').classList.remove('hidden');
+            }
+            renderAll();
+        }
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const modal = document.getElementById('modal');
+        const modalClose = document.getElementById('modalClose');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = '#667eea';
+            uploadArea.style.color = 'white';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.background = '#f8f9fa';
+            uploadArea.style.color = '';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = '#f8f9fa';
+            uploadArea.style.color = '';
+            handleFiles({ target: { files: e.dataTransfer.files } });
+        });
+
+        modalClose.addEventListener('click', () => modal.classList.remove('active'));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+
+        function handleFiles(e) {
+            const files = Array.from(e.target.files);
+            
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = new Uint8Array(event.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+
+                        const rowsWithStatus = jsonData.map((row, index) => {
+                            if (index === 0) {
+                                return row;
+                            } else {
+                                return {
+                                    data: row,
+                                    status: 'не оплачено',
+                                    paymentDate: null,
+                                    rowId: index
+                                };
+                            }
+                        });
+
+                        const order = {
+                            id: Date.now() + Math.random(),
+                            fileName: file.name,
+                            data: rowsWithStatus,
+                            uploadDate: new Date().toLocaleDateString('ru-RU')
+                        };
+
+                        orders.push(order);
+                        saveUserOrders();
+                        renderAll();
+                    } catch (error) {
+                        alert('Ошибка при чтении файла: ' + file.name);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function renderAll() {
+            renderOrderCards();
+            renderDatabase();
+        }
+
+        function renderOrderCards() {
+            const grid = document.getElementById('ordersGrid');
+            grid.innerHTML = '';
+
+            orders.forEach(order => {
+                const dataRows = order.data.filter((r, i) => i > 0);
+                const paidCount = dataRows.filter(r => r.status === 'оплачено').length;
+                const unpaidCount = dataRows.length - paidCount;
+                
+                if (mainFilter === 'paid' && paidCount === 0) return;
+                if (mainFilter === 'unpaid' && unpaidCount === 0) return;
+                
+                const card = document.createElement('div');
+                card.className = 'order-card';
+                card.innerHTML = `
+                    <div class="order-icon">📦</div>
+                    <div class="order-title">${order.fileName}</div>
+                    <div class="order-info">📅 ${order.uploadDate}</div>
+                    <div class="order-info">📊 ${dataRows.length} записей</div>
+                    <div class="order-info" style="color: #27ae60; font-weight: 600;">✅ ${paidCount}</div>
+                    <div class="order-info" style="color: #e74c3c; font-weight: 600;">❌ ${unpaidCount}</div>
+                `;
+                card.addEventListener('click', () => showOrderDetails(order));
+                grid.appendChild(card);
+            });
+        }
+
+        function setMainFilter(filter) {
+            mainFilter = filter;
+            const btns = document.querySelectorAll('.filters .filter-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderOrderCards();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            const btns = document.querySelectorAll('#databaseTab .filter-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderDatabase();
+        }
+
+        function renderDatabase() {
+            const thead = document.getElementById('databaseTableHead');
+            const tbody = document.getElementById('databaseTableBody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="100" style="text-align: center; padding: 40px;">Нет данных</td></tr>';
+                return;
+            }
+
+            let maxColumns = 0;
+            let headerExample = [];
+            
+            orders.forEach(order => {
+                if (order.data.length > 0) {
+                    const headers = order.data[0];
+                    let uzbIndex = -1;
+                    for (let i = 0; i < headers.length; i++) {
+                        const headerStr = String(headers[i]).toLowerCase();
+                        if (headerStr.includes('узб') || headerStr.includes('uzb')) {
+                            uzbIndex = i;
+                            break;
+                        }
+                    }
+                    if (uzbIndex === -1) uzbIndex = headers.length - 1;
+                    
+                    const colCount = uzbIndex + 1;
+                    if (colCount > maxColumns) {
+                        maxColumns = colCount;
+                        headerExample = headers.slice(0, uzbIndex + 1);
+                    }
+                }
+            });
+
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = '<th>Файл (Рейс)</th>';
+            headerExample.forEach(h => {
+                headerRow.innerHTML += `<th>${h || ''}</th>`;
+            });
+            headerRow.innerHTML += '<th>Статус</th><th>Дата оплаты</th>';
+            thead.appendChild(headerRow);
+
+            orders.forEach(order => {
+                const dataRows = order.data.filter((r, i) => i > 0);
+                
+                dataRows.forEach(row => {
+                    const hasData = row.data.some(cell => cell && String(cell).trim() !== '');
+                    if (!hasData) return;
+
+                    if (currentFilter === 'paid' && row.status !== 'оплачено') return;
+                    if (currentFilter === 'unpaid' && row.status === 'оплачено') return;
+
+                    const tr = document.createElement('tr');
+                    
+                    tr.innerHTML = `<td style="font-weight: bold;">${order.fileName}</td>`;
+                    
+                    const headers = order.data[0];
+                    let uzbIndex = -1;
+                    for (let i = 0; i < headers.length; i++) {
+                        const headerStr = String(headers[i]).toLowerCase();
+                        if (headerStr.includes('узб') || headerStr.includes('uzb')) {
+                            uzbIndex = i;
+                            break;
+                        }
+                    }
+                    if (uzbIndex === -1) uzbIndex = headers.length - 1;
+                    
+                    for (let i = 0; i <= uzbIndex; i++) {
+                        const value = row.data[i] || '';
+                        tr.innerHTML += `<td class="editable-cell" onclick="editCellDB('${order.id}', ${row.rowId}, ${i}, this)">${value}</td>`;
+                    }
+                    
+                    for (let i = uzbIndex + 1; i < maxColumns; i++) {
+                        tr.innerHTML += '<td></td>';
+                    }
+                    
+                    const statusClass = row.status === 'оплачено' ? 'status-paid' : 'status-unpaid';
+                    const statusText = row.status === 'оплачено' ? '✅ Оплачено' : '❌ Не оплачено';
+                    const paymentDateText = row.paymentDate || '-';
+                    
+                    tr.innerHTML += `
+                        <td class="status-cell ${statusClass}" onclick="toggleRowStatusFromDB('${order.id}', ${row.rowId})">${statusText}</td>
+                        <td style="text-align: center;">${paymentDateText}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        function showOrderDetails(order) {
+            currentOrder = order;
+            document.getElementById('modalTitle').textContent = order.fileName;
+            
+            if (order.data.length === 0) {
+                document.getElementById('tableWrapper').innerHTML = '<p style="text-align: center; padding: 40px;">Нет данных</p>';
+                modal.classList.add('active');
+                return;
+            }
+
+            let tableHTML = '<table class="database-table">';
+            
+            let uzbIndex = -1;
+            const headers = order.data[0];
+            for (let i = 0; i < headers.length; i++) {
+                const headerStr = String(headers[i]).toLowerCase();
+                if (headerStr.includes('узб') || headerStr.includes('uzb')) {
+                    uzbIndex = i;
+                    break;
+                }
+            }
+            if (uzbIndex === -1) uzbIndex = headers.length - 1;
+
+            order.data.forEach((row, rowIndex) => {
+                if (rowIndex === 0) {
+                    tableHTML += '<thead><tr>';
+                    for (let i = 0; i <= uzbIndex; i++) {
+                        tableHTML += `<th>${row[i] || ''}</th>`;
+                    }
+                    tableHTML += '<th>Статус</th><th>Дата оплаты</th></tr></thead><tbody>';
+                } else {
+                    const rowData = row.data;
+                    const hasData = rowData.slice(0, uzbIndex + 1).some(cell => cell && String(cell).trim() !== '');
+                    if (!hasData) return;
+                    
+                    tableHTML += '<tr>';
+                    
+                    for (let colIndex = 0; colIndex <= uzbIndex; colIndex++) {
+                        const value = rowData[colIndex] || '';
+                        tableHTML += `<td class="editable-cell" onclick="editCell('${order.id}', ${row.rowId}, ${colIndex}, this)">${value}</td>`;
+                    }
+                    
+                    const statusClass = row.status === 'оплачено' ? 'status-paid' : 'status-unpaid';
+                    const statusText = row.status === 'оплачено' ? '✅ Оплачено' : '❌ Не оплачено';
+                    const paymentDateText = row.paymentDate || '-';
+                    
+                    tableHTML += `
+                        <td class="status-cell ${statusClass}" onclick="toggleRowStatus('${order.id}', ${row.rowId})">${statusText}</td>
+                        <td style="text-align: center;">${paymentDateText}</td>
+                    `;
+                    tableHTML += '</tr>';
+                }
+            });
+
+            tableHTML += '</tbody></table>';
+            document.getElementById('tableWrapper').innerHTML = tableHTML;
+            modal.classList.add('active');
+        }
+
+        window.editCell = function(orderId, rowId, colIndex, cellElement) {
+            const currentValue = cellElement.textContent;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'cell-input';
+            input.value = currentValue;
+            
+            cellElement.textContent = '';
+            cellElement.appendChild(input);
+            input.focus();
+            input.select();
+            
+            function saveEdit() {
+                const newValue = input.value;
+                const order = orders.find(o => o.id == orderId);
+                if (order) {
+                    const row = order.data.find(r => r.rowId === rowId);
+                    if (row) {
+                        row.data[colIndex] = newValue;
+                        saveUserOrders();
+                        cellElement.textContent = newValue;
+                        renderAll();
+                    }
+                }
+            }
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveEdit();
+                }
+            });
+        }
+
+        window.editCellDB = function(orderId, rowId, colIndex, cellElement) {
+            const currentValue = cellElement.textContent;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'cell-input';
+            input.value = currentValue;
+            
+            cellElement.textContent = '';
+            cellElement.appendChild(input);
+            input.focus();
+            input.select();
+            
+            function saveEdit() {
+                const newValue = input.value;
+                const order = orders.find(o => o.id == orderId);
+                if (order) {
+                    const row = order.data.find(r => r.rowId === rowId);
+                    if (row) {
+                        row.data[colIndex] = newValue;
+                        saveUserOrders();
+                        cellElement.textContent = newValue;
+                    }
+                }
+            }
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveEdit();
+                }
+            });
+        }
+
+        window.toggleRowStatus = function(orderId, rowId) {
+            const order = orders.find(o => o.id == orderId);
+            if (order) {
+                const row = order.data.find(r => r.rowId === rowId);
+                if (row) {
+                    if (row.status === 'оплачено') {
+                        row.status = 'не оплачено';
+                        row.paymentDate = null;
+                    } else {
+                        row.status = 'оплачено';
+                        const now = new Date();
+                        row.paymentDate = now.toLocaleString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    }
+                    saveUserOrders();
+                    showOrderDetails(order);
+                    renderAll();
+                }
+            }
+        }
+
+        window.toggleRowStatusFromDB = function(orderId, rowId) {
+            const order = orders.find(o => o.id == orderId);
+            if (order) {
+                const row = order.data.find(r => r.rowId === rowId);
+                if (row) {
+                    if (row.status === 'оплачено') {
+                        row.status = 'не оплачено';
+                        row.paymentDate = null;
+                    } else {
+                        row.status = 'оплачено';
+                        const now = new Date();
+                        row.paymentDate = now.toLocaleString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    }
+                    saveUserOrders();
+                    renderAll();
+                }
+            }
+        }
+
+        window.downloadCurrentOrder = function() {
+            if (!currentOrder) return;
+            
+            const exportData = [];
+            const headers = currentOrder.data[0];
+            
+            let uzbIndex = -1;
+            for (let i = 0; i < headers.length; i++) {
+                const headerStr = String(headers[i]).toLowerCase();
+                if (headerStr.includes('узб') || headerStr.includes('uzb')) {
+                    uzbIndex = i;
+                    break;
+                }
+            }
+            if (uzbIndex === -1) uzbIndex = headers.length - 1;
+            
+            const filteredHeaders = headers.slice(0, uzbIndex + 1);
+            exportData.push(filteredHeaders);
+            
+            currentOrder.data.forEach((row, index) => {
+                if (index > 0 && row.status === 'не оплачено') {
+                    const filteredRow = row.data.slice(0, uzbIndex + 1);
+                    const hasData = filteredRow.some(cell => cell && String(cell).trim() !== '');
+                    if (hasData) {
+                        exportData.push(filteredRow);
+                    }
+                }
+            });
+            
+            const ws = XLSX.utils.aoa_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Неоплаченные');
+            
+            const fileName = currentOrder.fileName.replace('.xlsx', '').replace('.xls', '') + '_неоплаченные.xlsx';
+            XLSX.writeFile(wb, fileName);
+        }
+
+        window.showAdminPanel = function() {
+            if (currentUser.email !== ADMIN_EMAIL) {
+                alert('Доступ запрещён');
+                return;
+            }
+            
+            document.getElementById('adminPanel').classList.remove('hidden');
+            document.getElementById('mainTab').classList.add('hidden');
+            document.getElementById('databaseTab').classList.add('hidden');
+            
+            updateSystemStatus();
+            loadAllUsers();
+            loadAllOrders();
+        }
+
+        function hideAdminPanel() {
+            document.getElementById('adminPanel').classList.add('hidden');
+            if (currentTab === 'main') {
+                document.getElementById('mainTab').classList.remove('hidden');
+            } else {
+                document.getElementById('databaseTab').classList.remove('hidden');
+            }
+        }
+
+        function loadAllUsers() {
+            const usersList = document.getElementById('adminUsersList');
+            usersList.innerHTML = '';
+            
+            const users = JSON.parse(localStorage.getItem('users') || '{}');
+            
+            if (Object.keys(users).length === 0) {
+                usersList.innerHTML = '<p style="text-align: center; color: #999;">Нет пользователей</p>';
+                return;
+            }
+            
+            for (const email in users) {
+                const userItem = document.createElement('div');
+                userItem.className = 'user-item';
+                userItem.innerHTML = `
+                    <div class="user-item-info">
+                        <strong>📧 ${email}</strong>
+                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                            Создан: ${new Date(users[email].createdAt).toLocaleString('ru-RU')}
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteUser('${email}')">🗑️ Удалить</button>
+                `;
+                usersList.appendChild(userItem);
+            }
+        }
+
+        function loadAllOrders() {
+            const ordersList = document.getElementById('adminOrdersList');
+            ordersList.innerHTML = '';
+            
+            const users = JSON.parse(localStorage.getItem('users') || '{}');
+            const allOrders = [];
+            
+            for (const email in users) {
+                const userOrders = JSON.parse(localStorage.getItem(`orders_${email}`) || '[]');
+                userOrders.forEach(order => {
+                    allOrders.push({ ...order, userEmail: email });
+                });
+            }
+            
+            const adminOrders = JSON.parse(localStorage.getItem(`orders_${ADMIN_EMAIL}`) || '[]');
+            adminOrders.forEach(order => {
+                allOrders.push({ ...order, userEmail: ADMIN_EMAIL });
+            });
+            
+            if (allOrders.length === 0) {
+                ordersList.innerHTML = '<p style="text-align: center; color: #999;">Нет рейсов</p>';
+                return;
+            }
+            
+            allOrders.forEach(order => {
+                const dataRows = order.data.filter((r, i) => i > 0);
+                const paidCount = dataRows.filter(r => r.status === 'оплачено').length;
+                const unpaidCount = dataRows.length - paidCount;
+                
+                const orderItem = document.createElement('div');
+                orderItem.className = 'user-item';
+                orderItem.style.background = '#fff3cd';
+                orderItem.innerHTML = `
+                    <div class="user-item-info">
+                        <strong>📦 ${order.fileName}</strong>
+                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                            Пользователь: ${order.userEmail}<br>
+                            Записей: ${dataRows.length} | ✅ ${paidCount} | ❌ ${unpaidCount}
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteOrder('${order.userEmail}', '${order.id}')">🗑️ Удалить</button>
+                `;
+                ordersList.appendChild(orderItem);
+            });
+        }
+
+        window.deleteUser = function(email) {
+            if (!confirm(`Удалить пользователя ${email} и все его рейсы?`)) return;
+            
+            const users = JSON.parse(localStorage.getItem('users') || '{}');
+            delete users[email];
+            localStorage.setItem('users', JSON.stringify(users));
+            localStorage.removeItem(`orders_${email}`);
+            
+            alert('✅ Пользователь удалён');
+            loadAllUsers();
+            loadAllOrders();
+        }
+
+        window.deleteOrder = function(userEmail, orderId) {
+            if (!confirm('Удалить этот рейс?')) return;
+            
+            const userOrders = JSON.parse(localStorage.getItem(`orders_${userEmail}`) || '[]');
+            const filtered = userOrders.filter(o => o.id != orderId);
+            localStorage.setItem(`orders_${userEmail}`, JSON.stringify(filtered));
+            
+            alert('✅ Рейс удалён');
+            loadAllOrders();
+        }
+
+        function toggleSystem() {
+            systemEnabled = !systemEnabled;
+            localStorage.setItem('systemEnabled', systemEnabled.toString());
+            updateSystemStatus();
+            
+            if (!systemEnabled) {
+                alert('🔴 Система отключена. Обычные пользователи не смогут войти.');
+            } else {
+                alert('🟢 Система включена.');
+            }
+        }
+
+        function updateSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            const btn = document.getElementById('btnToggleSystem');
+            
+            if (systemEnabled) {
+                statusDiv.textContent = '🟢 Система включена';
+                statusDiv.className = 'system-status enabled';
+                btn.textContent = '🔴 Отключить систему';
+                btn.className = 'btn btn-danger';
+            } else {
+                statusDiv.textContent = '🔴 Система отключена';
+                statusDiv.className = 'system-status disabled';
+                btn.textContent = '🟢 Включить систему';
+                btn.className = 'btn btn-success';
+            }
+        }
+
+        function printMain() {
+            window.print();
+        }
+
+        function printDatabase() {
+            window.print();
+        }
+
+        init();
+    </script>
+</body>
+</html>
